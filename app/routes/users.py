@@ -1,18 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.services.auth import decode_token
-from app.services.cache import get_cache, set_cache
+from app.services.redis_cache import cache
 from app.services.roles import require_admin
 
 router = APIRouter(prefix="/users")
 
 
 def get_current_user(token: str):
-    cached = get_cache(token)
+    cached = cache.get(token)
     if cached:
         return cached
 
     user = decode_token(token)
-    set_cache(token, user)
+    cache.set(token, user)
     return user
 
 

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.repository.users import get_user_by_email
-from app.services.redis_cache import redis_client
+from app.services.redis_cache import cache
 import pickle
 
 SECRET_KEY = "test_secret"

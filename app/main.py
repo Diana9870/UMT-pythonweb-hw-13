@@ -7,7 +7,7 @@ import logging
 
 from app.database import Base, engine
 from app.routes import auth, users, contacts
-from app.services.redis_cache import r
+from app.services.redis_cache import cache
 
 
 logging.basicConfig(level=logging.INFO)

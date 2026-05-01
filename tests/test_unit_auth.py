@@ -108,5 +108,6 @@ def test_create_refresh_token():
 
      decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
-    assert decoded["sub"] == "user@test.com"
-    assert "exp" in decoded
+        assert decoded["sub"] == "user@test.com"
+        assert decoded["email"] == "user@test.com"
+        assert "exp" in decoded
