@@ -1,17 +1,43 @@
+import logging
 from datetime import datetime, timedelta
-from jose import jwt
+from typing import Optional
 
-SECRET_KEY = "your_secret"
+from jose import JWTError, jwt
+
+from app.core.config import settings
+
+
+logger = logging.getLogger(__name__)
+
 ALGORITHM = "HS256"
+RESET_TOKEN_EXPIRE_MINUTES = 15
 
 
-def create_reset_token(email: str):
+def create_reset_token(email: str) -> str:
+    """
+    Generate password reset token.
+    """
     payload = {
         "sub": email,
-        "exp": datetime.utcnow() + timedelta(minutes=15),
+        "type": "reset",
+        "exp": datetime.utcnow() + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES),
     }
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
 
 
-def verify_reset_token(token: str):
-    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])["sub"]
+def verify_reset_token(token: str) -> Optional[str]:
+    """
+    Validate reset token and return email if valid.
+    """
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+
+        if payload.get("type") != "reset":
+            return None
+
+        return payload.get("sub")
+
+    except JWTError as e:
+        logger.warning(f"Invalid or expired reset token: {e}")
+        return None
