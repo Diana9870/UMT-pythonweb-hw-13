@@ -21,8 +21,8 @@ def admin_required(user):
 
 
 @router.get("/me")
-def me(token: str):
-    return get_current_user(token)
+def get_me(user=Depends(get_current_user)):
+    return user
 
 
 @router.get("/admin")
