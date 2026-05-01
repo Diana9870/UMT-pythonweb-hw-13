@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.repository.users import get_user_by_email
-from app.services.redis_cache import r
+from app.services.redis_cache import redis_client
+import pickle
+
+SECRET_KEY = "test_secret"
+ALGORITHM = "HS256"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -19,6 +23,32 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 ACCESS_TOKEN_EXPIRE = settings.access_token_expire_minutes
 REFRESH_TOKEN_EXPIRE = 60 * 24 * 7  
+
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    cached_user = await redis_client.get(email)
+    if cached_user:
+        return pickle.loads(cached_user)
+
+    user = get_user_by_email(db, email)
+    if user is None:
+        raise credentials_exception
+
+    await redis_client.set(email, pickle.dumps(user), ex=300)
+
+    return user
 
 
 def verify_password(plain_password, hashed_password):

@@ -1,20 +1,17 @@
-from itsdangerous import URLSafeTimedSerializer
-import os
-from dotenv import load_dotenv
+from datetime import datetime, timedelta
+from jose import jwt
 
-load_dotenv()
-
-serializer = URLSafeTimedSerializer(os.getenv("SECRET_KEY"))
+SECRET_KEY = "your_secret"
+ALGORITHM = "HS256"
 
 
 def create_reset_token(email: str):
-    """Create reset token"""
-    return serializer.dumps(email)
+    payload = {
+        "sub": email,
+        "exp": datetime.utcnow() + timedelta(minutes=15),
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def verify_reset_token(token: str):
-    """Verify reset token"""
-    try:
-        return serializer.loads(token, max_age=3600)
-    except:
-        return None
+    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])["sub"]

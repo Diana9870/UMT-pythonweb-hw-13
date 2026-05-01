@@ -66,3 +66,19 @@ def refresh_token(refresh_token: str):
 def logout(token: str):
     blacklist_token(token)
     return {"message": "Logged out"}
+
+
+@router.post("/request-password-reset")
+def request_reset(email: EmailSchema):
+    token = create_reset_token(email.email)
+    send_email(email.email, token)
+    return {"message": "Reset email sent"}
+
+
+@router.post("/reset-password")
+def reset_password(data: ResetSchema, db: Session = Depends(get_db)):
+    email = verify_reset_token(data.token)
+    user = get_user_by_email(db, email)
+    user.password = hash_password(data.new_password)
+    db.commit()
+    return {"message": "Password updated"}

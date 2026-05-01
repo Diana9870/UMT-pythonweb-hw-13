@@ -1,12 +1,7 @@
-__pycache__/
-*.pyc
+.idea/
+pytest_cache/
 
 .env
-venv/
-
 *.db
-
-.idea/
-.vscode/
-
-pytest_cache/
+.coverage
+__pycache__/

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.services.auth import decode_token
 from app.services.cache import get_cache, set_cache
+from app.services.roles import require_admin
 
 router = APIRouter(prefix="/users")
 
@@ -30,3 +31,8 @@ def admin(token: str):
     user = get_current_user(token)
     admin_required(user)
     return {"message": "admin access"}
+
+@router.patch("/avatar")
+def update_avatar(data: AvatarUpdate, current_user=Depends(get_current_user)):
+    require_admin(current_user)
+    return update_avatar_service()
