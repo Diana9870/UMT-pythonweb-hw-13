@@ -128,3 +128,15 @@ def get_current_admin(user=Depends(get_current_user)):
     if user.role != "admin":
         raise HTTPException(status_code=403)
     return user
+
+
+def create_refresh_token(data: dict):
+    to_encode = data.copy()
+    
+    expire = datetime.utcnow() + timedelta(days=7)
+    to_encode.update({
+        "exp": expire,
+        "email": data.get("sub")
+    })
+
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)

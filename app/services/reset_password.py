@@ -23,7 +23,7 @@ def create_reset_token(email: str) -> str:
         "exp": datetime.utcnow() + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES),
     }
 
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
 
 def verify_reset_token(token: str) -> Optional[str]:
@@ -31,8 +31,7 @@ def verify_reset_token(token: str) -> Optional[str]:
     Validate reset token and return email if valid.
     """
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
-
+        payload = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
         if payload.get("type") != "reset":
             return None
 

@@ -14,3 +14,8 @@ def get_db():
         yield db
     finally:
         db.close()
+
+from app import models
+
+Contact = models.Contact
+User = models.User

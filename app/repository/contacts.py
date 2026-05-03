@@ -1,44 +1,81 @@
 from sqlalchemy.orm import Session
+from typing import List, Optional
+
 from app.models import Contact
 
 
-def get_contacts(user_id: int, skip: int, limit: int, db: Session):
-    return db.query(Contact).filter(
-        Contact.owner_id == user_id
-    ).offset(skip).limit(limit).all()
+class ContactsRepository:
+    def __init__(self, db: Session):
+        self.db = db
 
+    async def get_contacts(
+        self,
+        user_id: int,
+        skip: int = 0,
+        limit: int = 10
+    ) -> List[Contact]:
+        return (
+            self.db.query(Contact)
+            .filter(Contact.owner_id == user_id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
-def search_contacts(user_id: int, query: str, db: Session):
-    return db.query(Contact).filter(
-        Contact.owner_id == user_id,
-        Contact.first_name.ilike(f"%{query}%")
-    ).all()
+    async def search_contacts(
+        self,
+        user_id: int,
+        query: str
+    ) -> List[Contact]:
+        return (
+            self.db.query(Contact)
+            .filter(
+                Contact.owner_id == user_id,
+                Contact.first_name.ilike(f"%{query}%")
+            )
+            .all()
+        )
 
+    async def get_contact(
+        self,
+        contact_id: int,
+        user_id: int
+    ) -> Optional[Contact]:
+        return (
+            self.db.query(Contact)
+            .filter(
+                Contact.id == contact_id,
+                Contact.owner_id == user_id
+            )
+            .first()
+        )
 
-def get_contact(contact_id: int, user_id: int, db: Session):
-    return db.query(Contact).filter(
-        Contact.id == contact_id,
-        Contact.owner_id == user_id
-    ).first()
+    async def create_contact(
+        self,
+        data: dict,
+        user_id: int
+    ) -> Contact:
+        contact = Contact(**data, owner_id=user_id)
+        self.db.add(contact)
+        self.db.commit()
+        self.db.refresh(contact)
+        return contact
 
+    async def update_contact(
+        self,
+        contact: Contact,
+        data: dict
+    ) -> Contact:
+        for key, value in data.items():
+            setattr(contact, key, value)
 
-def create_contact(data: dict, user_id: int, db: Session):
-    contact = Contact(**data, owner_id=user_id)
-    db.add(contact)
-    db.commit()
-    db.refresh(contact)
-    return contact
+        self.db.commit()
+        self.db.refresh(contact)
+        return contact
 
-
-def update_contact(contact, data: dict, db: Session):
-    for key, value in data.items():
-        setattr(contact, key, value)
-
-    db.commit()
-    db.refresh(contact)
-    return contact
-
-
-def delete_contact(contact, db: Session):
-    db.delete(contact)
-    db.commit()
+    async def delete_contact(
+        self,
+        contact: Contact
+    ) -> None:
+        self.db.delete(contact)
+        self.db.commit()

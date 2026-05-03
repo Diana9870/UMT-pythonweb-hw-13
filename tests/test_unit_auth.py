@@ -103,11 +103,11 @@ def test_reset_token_expired():
 
 
 def test_create_refresh_token():
-     data = {"sub": "user@test.com"}
-     token = create_refresh_token(data)
+    data = {"sub": "user@test.com"}
+    token = create_refresh_token(data)
 
-     decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
-        assert decoded["sub"] == "user@test.com"
-        assert decoded["email"] == "user@test.com"
-        assert "exp" in decoded
+    assert decoded["sub"] == "user@test.com"
+    assert decoded["email"] == "user@test.com"
+    assert "exp" in decoded
