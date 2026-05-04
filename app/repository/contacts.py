@@ -66,11 +66,11 @@ class ContactsRepository:
     def search_contacts(self, query: str, user):
         return (
             self.db.query(Contact)
-            .filter(Contact.user_id == user.id)
             .filter(
-                Contact.first_name.ilike(f"%{query}%") |
-                Contact.last_name.ilike(f"%{query}%") |
-                Contact.email.ilike(f"%{query}%")
+                Contact.user_id == user.id,
+                Contact.first_name.ilike(f"%{query}%")
+                | Contact.last_name.ilike(f"%{query}%")
+                | Contact.email.ilike(f"%{query}%"),
             )
             .all()
         )
@@ -79,7 +79,11 @@ class ContactsRepository:
         today = datetime.today().date()
         next_week = today + timedelta(days=7)
 
-        contacts = self.db.query(Contact).filter(Contact.user_id == user.id).all()
+        contacts = (
+            self.db.query(Contact)
+            .filter(Contact.user_id == user.id)
+            .all()
+        )
 
         result = []
         for c in contacts:

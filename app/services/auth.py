@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict
+from typing import Dict
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -7,15 +7,11 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from app.config import settings
+from app.config import settings, SECRET_KEY, ALGORITHM
 from app.database import get_db
 from app.repository.users import get_user_by_email
-from app.config import SECRET_KEY, ALGORITHM
 
 # ---------------- SECURITY CONFIG ---------------- #
-
-SECRET_KEY = "test_secret"
-ALGORITHM = "HS256"
 
 ACCESS_TOKEN_EXPIRE = settings.access_token_expire_minutes
 REFRESH_TOKEN_EXPIRE = 60 * 24 * 7  # 7 days
@@ -34,24 +30,10 @@ def hash_password(password: str) -> str:
 
 # ---------------- TOKEN CORE ---------------- #
 
-def _create_token(data: dict, expires_minutes: int, token_type: str) -> str:
-    to_encode = data.copy()
-
-    now = datetime.now(timezone.utc)
-
-    to_encode.update({
-        "iat": now,
-        "exp": now + timedelta(minutes=expires_minutes),
-        "type": token_type,
-    })
-
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-
 def create_access_token(data: dict):
     to_encode = data.copy()
 
-    expire = datetime.utcnow() + timedelta(minutes=30)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=30)
     to_encode.update({"exp": expire, "type": "access"})
 
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -60,7 +42,7 @@ def create_access_token(data: dict):
 def create_refresh_token(data: dict):
     to_encode = data.copy()
 
-    expire = datetime.utcnow() + timedelta(days=7)
+    expire = datetime.now(timezone.utc) + timedelta(days=7)
     to_encode.update({"exp": expire, "type": "refresh"})
 
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -127,8 +109,6 @@ def get_current_admin(user=Depends(get_current_user)):
     return user
 
 # ---------------- PASSWORD RESET SUPPORT ---------------- #
-
-# ❗ ДОДАЄМО те, чого НЕМАЄ, але тест очікує
 
 async def update_password(user, new_password: str, db: Session):
     """
