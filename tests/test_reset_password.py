@@ -7,7 +7,9 @@ from app.services.reset_password import (
     verify_reset_token,
 )
 
-def test_create_reset_token(email="test@example.com"):
+
+def test_create_reset_token():
+    email = "test@example.com"
     token = create_reset_token(email)
 
     assert isinstance(token, str)
@@ -22,13 +24,15 @@ def test_verify_valid_token():
 
 
 def test_verify_invalid_token():
-    assert verify_reset_token("invalid.token") is None
+    result = verify_reset_token("invalid.token")
+    assert result is None
 
 
 def test_create_token_invalid_email():
     token = create_reset_token("invalid-email")
 
     assert verify_reset_token(token) is None
+
 
 def test_request_password_reset(client, monkeypatch):
     send_email_mock = AsyncMock()
@@ -44,7 +48,8 @@ def test_request_password_reset(client, monkeypatch):
     )
 
     assert response.status_code == status.HTTP_200_OK
-    send_email_mock.assert_called_once()
+
+    assert send_email_mock.await_count == 1
 
 
 def test_reset_password_success(client, monkeypatch):
@@ -66,7 +71,8 @@ def test_reset_password_success(client, monkeypatch):
     )
 
     assert response.status_code == status.HTTP_200_OK
-    update_mock.assert_called_once()
+
+    assert update_mock.await_count == 1
 
 
 def test_reset_password_invalid_token(client):

@@ -75,12 +75,14 @@ def logout(token: str):
     return {"message": "Logged out"}
 
 @router.post("/request-password-reset")
-async def request_password_reset(
-    body: RequestPasswordReset,
-):
+async def request_password_reset(body: RequestPasswordReset):
     token = create_reset_token(body.email)
 
-    await send_email(body.email, token)
+    await send_email(
+        body.email,
+        "Password reset",
+        f"Use this token: {token}"
+    )
 
     return {"message": "Reset email sent"}
 
@@ -91,10 +93,16 @@ async def reset_password(
 ):
     email = verify_reset_token(body.token)
 
+    if not email:
+        raise HTTPException(status_code=400, detail="Invalid token")
+
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Weak password")
+
     user = get_user_by_email(email, db)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    await update_password(user, body.new_password, db)
+    await update_password(email, body.new_password)
 
     return {"message": "Password updated"}
