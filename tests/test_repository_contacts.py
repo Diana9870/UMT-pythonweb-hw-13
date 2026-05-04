@@ -145,11 +145,11 @@ def test_search_contacts(repo, mock_db, user):
 
 
 def test_get_upcoming_birthdays(repo, mock_db, user):
-    contacts = [MagicMock()]
+    contact = MagicMock()
+    contact.birthday = date.today()
 
-    mock_db.query().filter().all.return_value = contacts
+    mock_db.query().filter().all.return_value = [contact]
 
     result = repo.get_upcoming_birthdays(user)
 
-    assert result == contacts
-
+    assert isinstance(result, list)

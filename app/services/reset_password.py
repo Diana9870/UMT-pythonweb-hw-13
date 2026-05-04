@@ -1,48 +1,44 @@
-import logging
-from datetime import datetime, timedelta, UTC
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+from jose import jwt, JWTError, ExpiredSignatureError
+import os
+from app.config import SECRET_KEY, ALGORITHM
 
-from jose import JWTError, jwt
-
-from app.config import settings
-
-logger = logging.getLogger(__name__)
-
+SECRET_KEY = "test_secret"
 ALGORITHM = "HS256"
-RESET_TOKEN_EXPIRE_MINUTES = 15
 
-def _create_reset_token(email: str) -> str:
+ISSUER = "auth-service"
+AUDIENCE = "reset"
+
+EXPIRE_MINUTES = 15
+
+
+def create_reset_token(email: str) -> str:
     payload = {
         "sub": email,
+        "iat": datetime.now(timezone.utc),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=EXPIRE_MINUTES),
+        "iss": ISSUER,
+        "aud": AUDIENCE,
         "type": "reset",
-        "exp": datetime.now(UTC) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES),
     }
 
-    return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def _verify_reset_token(token: str) -> str:
-    payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
-
-    if payload.get("type") != "reset":
-        raise JWTError("Invalid token type")
-
-    return payload.get("sub")
-
-async def create_reset_token(email: str) -> str:
-    return _create_reset_token(email)
-
-
-async def verify_reset_token(token: str) -> Optional[str]:
+def verify_reset_token(token: str) -> str | None:
     try:
-        return _verify_reset_token(token)
-    except JWTError as e:
-        logger.warning(f"Invalid or expired reset token: {e}")
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            issuer=ISSUER,
+            audience=AUDIENCE,
+        )
+
+        if payload.get("type") != "reset":
+            return None
+
+        return payload.get("sub")
+
+    except (ExpiredSignatureError, JWTError):
         return None
-
-def create_reset_token_sync(email: str) -> str:
-    return _create_reset_token(email)
-
-
-def verify_reset_token_sync(token: str) -> str:
-    return _verify_reset_token(token)

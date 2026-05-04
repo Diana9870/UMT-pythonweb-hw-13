@@ -1,4 +1,8 @@
 from pydantic_settings import BaseSettings
+import os
+
+SECRET_KEY = "test_secret"
+ALGORITHM = "HS256"
 
 class Settings(BaseSettings):
     database_url: str
