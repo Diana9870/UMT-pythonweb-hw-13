@@ -14,7 +14,7 @@ class User(Base):
     role = Column(String, default="user")
     confirmed = Column(Boolean, default=True)
 
-    contacts = relationship("Contact", back_populates="owner")
+    contacts = relationship("Contact", back_populates="user")
 
 
 class Contact(Base):
@@ -27,5 +27,5 @@ class Contact(Base):
     phone = Column(String)
     birthday = Column(Date)
 
-    owner_id = Column(Integer, ForeignKey("users.id"))
-    owner = relationship("User", back_populates="contacts")
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user = relationship("User", back_populates="contacts")

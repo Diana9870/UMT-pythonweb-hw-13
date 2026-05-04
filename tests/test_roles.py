@@ -51,7 +51,7 @@ async def test_admin_can_access_protected_endpoint(client, monkeypatch):
         mock_get_current_user
     )
 
-    response = await client.get("/users/me")
+    response = client.get("/users/me")
 
     assert response.status_code in (200, 404)  
 
@@ -68,7 +68,7 @@ async def test_user_cannot_access_admin_endpoint(client, monkeypatch):
         mock_get_current_user
     )
 
-    response = await client.get("/users/me")
+    response = client.get("/users/me")
 
     assert response.status_code == 403
 

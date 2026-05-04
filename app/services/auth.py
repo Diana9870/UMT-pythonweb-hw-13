@@ -20,36 +20,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-
 ACCESS_TOKEN_EXPIRE = settings.access_token_expire_minutes
-REFRESH_TOKEN_EXPIRE = 60 * 24 * 7  
-
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-    )
-
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    cached_user = await redis_client.get(email)
-    if cached_user:
-        return pickle.loads(cached_user)
-
-    user = get_user_by_email(db, email)
-    if user is None:
-        raise credentials_exception
-
-    await redis_client.set(email, pickle.dumps(user), ex=300)
-
-    return user
-
+REFRESH_TOKEN_EXPIRE = 60 * 24 * 7
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -67,8 +39,8 @@ def create_token(data: dict, expires_delta: int):
 
     return jwt.encode(
         to_encode,
-        settings.secret_key,
-        algorithm=settings.algorithm
+        SECRET_KEY,         
+        algorithm=ALGORITHM
     )
 
 
@@ -84,8 +56,8 @@ def decode_token(token: str):
     try:
         payload = jwt.decode(
             token,
-            settings.secret_key,
-            algorithms=[settings.algorithm]
+            SECRET_KEY,   
+            algorithms=[ALGORITHM]
         )
         return payload
     except JWTError:
@@ -95,31 +67,37 @@ def decode_token(token: str):
         )
 
 
-def blacklist_token(token: str):
-    r.setex(f"bl:{token}", 3600 * 24, "true")
-
-
-def is_token_blacklisted(token: str):
-    return r.get(f"bl:{token}") is not None
-
-
-def get_current_user(
+async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
     if is_token_blacklisted(token):
         raise HTTPException(status_code=401, detail="Token revoked")
 
-    payload = decode_token(token)
-    email: Optional[str] = payload.get("sub")
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+    )
 
-    if email is None:
-        raise HTTPException(status_code=401)
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+
+        if email is None:
+            raise credentials_exception
+
+    except JWTError:
+        raise credentials_exception
+
+    cached_user = await cache.get(email)
+    if cached_user:
+        return pickle.loads(cached_user)
 
     user = get_user_by_email(email, db)
+    if user is None:
+        raise credentials_exception
 
-    if not user:
-        raise HTTPException(status_code=401)
+    await cache.set(email, pickle.dumps(user), ex=300)
 
     return user
 
@@ -130,13 +108,20 @@ def get_current_admin(user=Depends(get_current_user)):
     return user
 
 
+_blacklist = set()
+
+
+def blacklist_token(token: str):
+    _blacklist.add(token)
+
+
+def is_token_blacklisted(token: str) -> bool:
+    return token in _blacklist
+
 def create_refresh_token(data: dict):
     to_encode = data.copy()
-    
     expire = datetime.utcnow() + timedelta(days=7)
-    to_encode.update({
-        "exp": expire,
-        "email": data.get("sub")
-    })
+
+    to_encode.update({"exp": expire})
 
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)

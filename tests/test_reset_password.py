@@ -69,9 +69,9 @@ async def test_request_password_reset(client, monkeypatch, email):
     send_email_mock = AsyncMock()
 
     monkeypatch.setattr(
-        "app.services.email.py",
-        send_email_mock
-    )
+    "app.services.email.send_email",
+    send_email_mock
+)
 
     response = await client.post(
         "/auth/request-password-reset",
