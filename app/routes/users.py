@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.services.auth import decode_token
 from app.services.redis_cache import cache
 from app.services.roles import require_admin
+from app.services.auth import get_current_user
+from app.models import User
 
 router = APIRouter(prefix="/users")
 
@@ -22,8 +24,8 @@ def admin_required(user):
 
 
 @router.get("/me")
-def get_me(user=Depends(get_current_user)):
-    return user
+async def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
 
 
 @router.get("/admin")
