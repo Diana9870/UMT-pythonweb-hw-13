@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from jose import JWTError, jwt
@@ -11,17 +11,18 @@ from app.config import settings
 from app.database import get_db
 from app.repository.users import get_user_by_email
 from app.services.redis_cache import cache
+
 import pickle
+
 
 SECRET_KEY = "test_secret"
 ALGORITHM = "HS256"
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
 ACCESS_TOKEN_EXPIRE = settings.access_token_expire_minutes
-REFRESH_TOKEN_EXPIRE = 60 * 24 * 7
+REFRESH_TOKEN_EXPIRE = 60 * 24 * 7 
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -30,18 +31,12 @@ def verify_password(plain_password, hashed_password):
 def hash_password(password: str):
     return pwd_context.hash(password)
 
-
 def create_token(data: dict, expires_delta: int):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=expires_delta)
-
+    expire = datetime.now(timezone.utc) + timedelta(minutes=expires_delta)
     to_encode.update({"exp": expire})
 
-    return jwt.encode(
-        to_encode,
-        SECRET_KEY,         
-        algorithm=ALGORITHM
-    )
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def create_access_token(data: dict):
@@ -54,18 +49,9 @@ def create_refresh_token(data: dict):
 
 def decode_token(token: str):
     try:
-        payload = jwt.decode(
-            token,
-            SECRET_KEY,   
-            algorithms=[ALGORITHM]
-        )
-        return payload
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid token"
-        )
-
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -80,13 +66,13 @@ async def get_current_user(
     )
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = decode_token(token)
         email: str = payload.get("sub")
 
         if email is None:
             raise credentials_exception
 
-    except JWTError:
+    except Exception:
         raise credentials_exception
 
     cached_user = await cache.get(email)
@@ -97,16 +83,15 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
 
-    await cache.set(email, pickle.dumps(user), ex=300)
+    await cache.set(email, pickle.dumps(user))
 
     return user
 
 
 def get_current_admin(user=Depends(get_current_user)):
     if user.role != "admin":
-        raise HTTPException(status_code=403)
+        raise HTTPException(status_code=403, detail="Forbidden")
     return user
-
 
 _blacklist = set()
 
@@ -117,9 +102,3 @@ def blacklist_token(token: str):
 
 def is_token_blacklisted(token: str) -> bool:
     return token in _blacklist
-
-def create_refresh_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=7)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
