@@ -11,18 +11,12 @@ from app.database import Base, engine
 from app.routes import auth, users, contacts
 from app.services.redis_cache import cache
 
-
-# -------------------- LOGGING --------------------
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 
 logger = logging.getLogger("app")
-
-
-# -------------------- LIFESPAN --------------------
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -55,8 +49,6 @@ async def lifespan(app: FastAPI):
         pass
 
 
-# -------------------- APP --------------------
-
 app = FastAPI(
     title="Contacts API",
     description="Contacts manager with JWT auth, Redis cache, and role-based access",
@@ -64,19 +56,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-
-# -------------------- CORS --------------------
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # у проді краще обмежити
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# -------------------- MIDDLEWARE --------------------
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -101,9 +87,6 @@ async def log_requests(request: Request, call_next):
 
     return response
 
-
-# -------------------- EXCEPTION HANDLERS --------------------
-
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     """
@@ -126,9 +109,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": "Internal Server Error"},
     )
-
-
-# -------------------- HEALTHCHECK --------------------
 
 @app.get("/", tags=["Healthcheck"])
 def root():
@@ -173,9 +153,6 @@ async def health_redis():
     except Exception:
         raise HTTPException(status_code=500, detail="Redis error")
 
-
-# -------------------- ROUTERS --------------------
-
-app.include_router(auth.router, prefix="/auth", tags=["auth"])
-app.include_router(users.router, prefix="/users", tags=["users"])
-app.include_router(contacts.router)  # prefix вже всередині
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(contacts.router)

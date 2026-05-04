@@ -2,9 +2,6 @@ from pydantic import BaseModel, EmailStr, Field
 from datetime import date
 from typing import Optional
 
-
-# ---------------- USER ----------------
-
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
@@ -26,9 +23,6 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
-# ---------------- CONTACT ----------------
-
 class ContactCreate(BaseModel):
     first_name: str
     last_name: str
@@ -48,14 +42,20 @@ class ContactResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
-# ---------------- AUTH ----------------
-
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
 
 
 class TokenPayload(BaseModel):
     sub: str
     exp: Optional[int] = None
+
+class RequestPasswordReset(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordSchema(BaseModel):
+    token: str
+    new_password: str = Field(min_length=6)

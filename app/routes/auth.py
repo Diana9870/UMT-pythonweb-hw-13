@@ -1,35 +1,48 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas import UserCreate, UserLogin, Token
+from app.schemas import (
+    UserCreate,
+    UserLogin,
+    Token,
+    RequestPasswordReset,
+    ResetPasswordSchema,
+)
 from app.services.auth import (
     hash_password,
     verify_password,
     create_access_token,
     create_refresh_token,
     decode_token,
-    blacklist_token
+    blacklist_token,
+    update_password,
 )
+from app.services.reset_password import (
+    create_reset_token,
+    verify_reset_token,
+)
+from app.services.email import send_email
 from app.repository.users import get_user_by_email, create_user
 
-router = APIRouter()
-
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register")
 def register(body: UserCreate, db: Session = Depends(get_db)):
     if get_user_by_email(body.email, db):
         raise HTTPException(status_code=409, detail="Email exists")
 
-    create_user({
-        "username": body.username,
-        "email": body.email,
-        "hashed_password": hash_password(body.password),
-        "confirmed": True
-    }, db)
+    create_user(
+        {
+            "username": body.username,
+            "email": body.email,
+            "hashed_password": hash_password(body.password),
+            "confirmed": True,
+        },
+        db,
+    )
 
     return {"message": "User created"}
-
 
 @router.post("/login", response_model=Token)
 def login(body: UserLogin, db: Session = Depends(get_db)):
@@ -43,42 +56,45 @@ def login(body: UserLogin, db: Session = Depends(get_db)):
 
     return {
         "access_token": access,
-        "refresh_token": refresh
+        "refresh_token": refresh,
     }
-
 
 @router.post("/refresh", response_model=Token)
 def refresh_token(refresh_token: str):
     payload = decode_token(refresh_token)
-
     email = payload.get("sub")
 
-    new_access = create_access_token({"sub": email})
-    new_refresh = create_refresh_token({"sub": email})
-
     return {
-        "access_token": new_access,
-        "refresh_token": new_refresh
+        "access_token": create_access_token({"sub": email}),
+        "refresh_token": create_refresh_token({"sub": email}),
     }
-
 
 @router.post("/logout")
 def logout(token: str):
     blacklist_token(token)
     return {"message": "Logged out"}
 
-
 @router.post("/request-password-reset")
-def request_reset(email: EmailSchema):
-    token = create_reset_token(email.email)
-    send_email(email.email, token)
+async def request_password_reset(
+    body: RequestPasswordReset,
+):
+    token = create_reset_token(body.email)
+
+    await send_email(body.email, token)
+
     return {"message": "Reset email sent"}
 
-
 @router.post("/reset-password")
-def reset_password(data: ResetSchema, db: Session = Depends(get_db)):
-    email = verify_reset_token(data.token)
-    user = get_user_by_email(db, email)
-    user.password = hash_password(data.new_password)
-    db.commit()
+async def reset_password(
+    body: ResetPasswordSchema,
+    db: Session = Depends(get_db),
+):
+    email = verify_reset_token(body.token)
+
+    user = get_user_by_email(email, db)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    await update_password(user, body.new_password, db)
+
     return {"message": "Password updated"}

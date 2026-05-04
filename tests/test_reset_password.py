@@ -7,11 +7,6 @@ from app.services.reset_password import (
     verify_reset_token,
 )
 
-
-# =========================
-# UNIT TESTS
-# =========================
-
 def test_create_reset_token(email="test@example.com"):
     token = create_reset_token(email)
 
@@ -31,16 +26,9 @@ def test_verify_invalid_token():
 
 
 def test_create_token_invalid_email():
-    # 🔥 FIX: твій код НЕ кидає exception → тому тест має бути інший
     token = create_reset_token("invalid-email")
 
-    # або перевіряємо що повертає None через verify
     assert verify_reset_token(token) is None
-
-
-# =========================
-# API TESTS
-# =========================
 
 def test_request_password_reset(client, monkeypatch):
     send_email_mock = AsyncMock()
@@ -55,7 +43,6 @@ def test_request_password_reset(client, monkeypatch):
         json={"email": "test@example.com"}
     )
 
-    # 🔥 якщо 422 → проблема НЕ в тесті
     assert response.status_code == status.HTTP_200_OK
     send_email_mock.assert_called_once()
 
@@ -65,7 +52,6 @@ def test_reset_password_success(client, monkeypatch):
 
     update_mock = AsyncMock()
 
-    # 🔥 FIX: правильний patch (у тебе цього методу НЕ існує)
     monkeypatch.setattr(
         "app.services.auth.update_password",
         update_mock
@@ -92,7 +78,6 @@ def test_reset_password_invalid_token(client):
         }
     )
 
-    # 🔥 422 означає schema validation, НЕ бізнес логіка
     assert response.status_code in (400, 422)
 
 

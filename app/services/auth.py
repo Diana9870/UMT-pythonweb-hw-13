@@ -11,15 +11,11 @@ from app.config import settings, SECRET_KEY, ALGORITHM
 from app.database import get_db
 from app.repository.users import get_user_by_email
 
-# ---------------- SECURITY CONFIG ---------------- #
-
 ACCESS_TOKEN_EXPIRE = settings.access_token_expire_minutes
 REFRESH_TOKEN_EXPIRE = 60 * 24 * 7  # 7 days
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
-# ---------------- PASSWORD ---------------- #
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
@@ -27,8 +23,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
-
-# ---------------- TOKEN CORE ---------------- #
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -57,8 +51,6 @@ def decode_token(token: str) -> Dict:
             detail="Could not validate credentials",
         )
 
-# ---------------- BLACKLIST ---------------- #
-
 _blacklist: set[str] = set()
 
 def blacklist_token(token: str) -> None:
@@ -66,8 +58,6 @@ def blacklist_token(token: str) -> None:
 
 def is_token_blacklisted(token: str) -> bool:
     return token in _blacklist
-
-# ---------------- CURRENT USER ---------------- #
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -98,8 +88,6 @@ async def get_current_user(
 
     return user
 
-# ---------------- ROLE CHECK ---------------- #
-
 def get_current_admin(user=Depends(get_current_user)):
     if user.role != "admin":
         raise HTTPException(
@@ -107,8 +95,6 @@ def get_current_admin(user=Depends(get_current_user)):
             detail="Forbidden",
         )
     return user
-
-# ---------------- PASSWORD RESET SUPPORT ---------------- #
 
 async def update_password(user, new_password: str, db: Session):
     """
