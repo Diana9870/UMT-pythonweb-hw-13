@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.services.auth import get_current_user
+from app.services.auth import get_current_admin
 from app.services.roles import require_admin
 from app.models import User
 
@@ -14,3 +15,13 @@ async def get_me(current_user: User = Depends(get_current_user)):
 async def admin_endpoint(current_user: User = Depends(get_current_user)):
     require_admin(current_user)
     return {"message": "admin access"}
+
+@router.patch("/avatar")
+async def change_default_avatar(
+    avatar_url: str,
+    current_user: User = Depends(get_current_admin)
+):
+    return {
+        "message": "Avatar changed",
+        "avatar": avatar_url
+    }

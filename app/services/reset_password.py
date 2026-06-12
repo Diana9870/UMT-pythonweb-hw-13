@@ -1,44 +1,77 @@
 from datetime import datetime, timedelta, timezone
-from jose import jwt, JWTError, ExpiredSignatureError
-import os
-from app.config import SECRET_KEY, ALGORITHM
 
-SECRET_KEY = "test_secret"
-ALGORITHM = "HS256"
+from email_validator import EmailNotValidError, validate_email
+from jose import ExpiredSignatureError, JWTError, jwt
+
+from app.config import settings
 
 ISSUER = "auth-service"
 AUDIENCE = "reset"
-
 EXPIRE_MINUTES = 15
 
 
-def create_reset_token(email: str) -> str:
+def create_reset_token(email: str) -> str | None:
+    """
+    Create password reset token.
+
+    Args:
+        email: User email.
+
+    Returns:
+        JWT token or None if email is invalid.
+    """
+
+    try:
+        validate_email(email)
+    except EmailNotValidError:
+        return None
+
     payload = {
         "sub": email,
         "iat": datetime.now(timezone.utc),
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=EXPIRE_MINUTES),
+        "exp": datetime.now(timezone.utc)
+        + timedelta(minutes=EXPIRE_MINUTES),
         "iss": ISSUER,
         "aud": AUDIENCE,
         "type": "reset",
     }
 
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(
+        payload,
+        settings.secret_key,
+        algorithm=settings.algorithm,
+    )
 
 
-def verify_reset_token(token: str) -> str | None:
-    try:
-        payload = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM],
-            issuer=ISSUER,
-            audience=AUDIENCE,
-        )
+def verify_reset_token(token: str) -> str:
+    """
+    Verify password reset token.
 
-        if payload.get("type") != "reset":
-            return None
+    Args:
+        token: JWT token.
 
-        return payload.get("sub")
+    Returns:
+        User email.
 
-    except (ExpiredSignatureError, JWTError):
-        return None
+    Raises:
+        JWTError
+        ExpiredSignatureError
+    """
+
+    payload = jwt.decode(
+        token,
+        settings.secret_key,
+        algorithms=[settings.algorithm],
+        issuer=ISSUER,
+        audience=AUDIENCE,
+    )
+
+    if payload.get("type") != "reset":
+        raise JWTError("Invalid token type")
+
+    email = payload.get("sub")
+
+    if not email:
+        raise JWTError("Email not found")
+
+    return email

@@ -1,7 +1,10 @@
 import json
 import logging
 from typing import Any, Optional
+
 from redis.asyncio import Redis
+
+from app.config import settings
 
 
 logger = logging.getLogger(__name__)
@@ -9,28 +12,31 @@ logger = logging.getLogger(__name__)
 
 class RedisCache:
     """
-    Redis cache service for storing and retrieving data.
+    Service for working with Redis cache.
 
-    This service provides a safe wrapper around Redis operations with:
-    - JSON serialization
-    - Error handling (fallback if Redis is unavailable)
-    - TTL support
+    Supports:
+    - storing JSON serializable data
+    - retrieving cached data
+    - deleting cache entries
+    - checking key existence
+    - clearing cache
+    - TTL management
     """
 
     def __init__(self, redis_client: Redis):
         """
         Initialize Redis cache service.
 
-        :param redis_client: Async Redis client instance
+        :param redis_client: Async Redis client instance.
         """
         self.redis = redis_client
 
     async def get(self, key: str) -> Optional[Any]:
         """
-        Retrieve a value from Redis cache.
+        Get value from Redis cache.
 
-        :param key: Cache key
-        :return: Deserialized Python object or None if not found / error
+        :param key: Cache key.
+        :return: Deserialized Python object or None.
         """
         try:
             data = await self.redis.get(key)
@@ -44,11 +50,15 @@ class RedisCache:
             return json.loads(data)
 
         except json.JSONDecodeError:
-            logger.warning(f"[RedisCache] Invalid JSON for key={key}")
+            logger.warning(
+                f"Invalid JSON in Redis for key: {key}"
+            )
             return None
 
-        except Exception as e:
-            logger.error(f"[RedisCache] GET failed for key={key}: {e}")
+        except Exception as error:
+            logger.error(
+                f"Redis GET error for key {key}: {error}"
+            )
             return None
 
     async def set(
@@ -56,13 +66,14 @@ class RedisCache:
         key: str,
         value: Any,
         expire: int = 300,
-    ) -> None:
+    ) -> bool:
         """
-        Store a value in Redis cache.
+        Save value to Redis cache.
 
-        :param key: Cache key
-        :param value: Any JSON-serializable object
-        :param expire: Expiration time in seconds (default: 5 min)
+        :param key: Cache key.
+        :param value: JSON serializable value.
+        :param expire: Expiration time in seconds.
+        :return: True if successful.
         """
         try:
             serialized = json.dumps(value)
@@ -73,68 +84,102 @@ class RedisCache:
                 ex=expire,
             )
 
-        except (TypeError, ValueError) as e:
-            logger.error(f"[RedisCache] Serialization error for key={key}: {e}")
+            return True
 
-        except Exception as e:
-            logger.error(f"[RedisCache] SET failed for key={key}: {e}")
+        except (TypeError, ValueError) as error:
+            logger.error(
+                f"Serialization error for key {key}: {error}"
+            )
+            return False
 
-    async def delete(self, key: str) -> None:
+        except Exception as error:
+            logger.error(
+                f"Redis SET error for key {key}: {error}"
+            )
+            return False
+
+    async def delete(self, key: str) -> bool:
         """
-        Delete a key from Redis cache.
+        Delete cache entry.
 
-        :param key: Cache key
+        :param key: Cache key.
+        :return: True if deleted.
         """
         try:
             await self.redis.delete(key)
+            return True
 
-        except Exception as e:
-            logger.error(f"[RedisCache] DELETE failed for key={key}: {e}")
+        except Exception as error:
+            logger.error(
+                f"Redis DELETE error for key {key}: {error}"
+            )
+            return False
 
     async def exists(self, key: str) -> bool:
         """
-        Check if a key exists in Redis.
+        Check whether key exists.
 
-        :param key: Cache key
-        :return: True if exists, False otherwise
+        :param key: Cache key.
+        :return: True if key exists.
         """
         try:
             result = await self.redis.exists(key)
             return result == 1
 
-        except Exception as e:
-            logger.error(f"[RedisCache] EXISTS failed for key={key}: {e}")
+        except Exception as error:
+            logger.error(
+                f"Redis EXISTS error for key {key}: {error}"
+            )
             return False
 
     async def ttl(self, key: str) -> Optional[int]:
         """
-        Get remaining TTL for a key.
+        Get remaining TTL.
 
-        :param key: Cache key
-        :return: TTL in seconds or None if error
+        :param key: Cache key.
+        :return: TTL in seconds.
         """
         try:
-            ttl = await self.redis.ttl(key)
-            return ttl
+            return await self.redis.ttl(key)
 
-        except Exception as e:
-            logger.error(f"[RedisCache] TTL failed for key={key}: {e}")
+        except Exception as error:
+            logger.error(
+                f"Redis TTL error for key {key}: {error}"
+            )
             return None
 
-    async def clear(self) -> None:
+    async def clear(self) -> bool:
         """
-        Clear all cache (use carefully in production).
+        Clear Redis database.
+
+        :return: True if successful.
         """
         try:
             await self.redis.flushdb()
+            return True
 
-        except Exception as e:
-            logger.error(f"[RedisCache] CLEAR failed: {e}")
+        except Exception as error:
+            logger.error(
+                f"Redis CLEAR error: {error}"
+            )
+            return False
+
+    async def close(self) -> None:
+        """
+        Close Redis connection.
+        """
+        try:
+            await self.redis.close()
+
+        except Exception as error:
+            logger.error(
+                f"Redis CLOSE error: {error}"
+            )
 
 
 redis_client = Redis(
-    host="localhost",
-    port=6379,
+    host=settings.redis_host,
+    port=settings.redis_port,
     db=0,
     decode_responses=True,
 )

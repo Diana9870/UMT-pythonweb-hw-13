@@ -4,9 +4,16 @@ sqlalchemy
 psycopg2-binary
 python-dotenv
 passlib[bcrypt]
-python-jose
+python-jose[cryptography]
+pydantic-settings
 redis
 pytest
 pytest-cov
 httpx
 itsdangerous
+email-validator
+fastapi-mail
+cloudinary
+sphinx
+sphinx-rtd-theme
+pytest-asyncio
