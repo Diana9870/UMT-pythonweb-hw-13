@@ -137,7 +137,7 @@ def test_delete_contact_not_found(repo, mock_db, user):
 def test_search_contacts(repo, mock_db, user):
     contacts = [MagicMock()]
 
-    mock_db.query().filter().all.return_value = contacts
+    mock_db.query().filter().filter().all.return_value = contacts
 
     result = repo.search_contacts("John", user)
 

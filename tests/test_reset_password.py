@@ -38,7 +38,7 @@ def test_request_password_reset(client, monkeypatch):
     send_email_mock = AsyncMock()
 
     monkeypatch.setattr(
-        "app.services.email.send_email",
+        "app.routes.auth.send_email",
         send_email_mock
     )
 
@@ -58,7 +58,7 @@ def test_reset_password_success(client, monkeypatch):
     update_mock = AsyncMock()
 
     monkeypatch.setattr(
-        "app.services.auth.update_password",
+        "app.routes.auth.update_password",
         update_mock
     )
 
