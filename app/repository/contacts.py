@@ -79,24 +79,21 @@ class ContactsRepository:
         contact_id: int,
         user=None,
     ):
-        """
-        Get contact by ID.
-
-        :param contact_id: Contact ID.
-        :param user: Current user.
-        :return: Contact or None.
-        """
-
-        query = self.db.query(Contact).filter(
-            Contact.id == contact_id
-        )
-
         if user:
-            query = query.filter(
-                Contact.user_id == user.id
+            return (
+                self.db.query(Contact)
+                .filter(
+                    Contact.id == contact_id,
+                    Contact.user_id == user.id,
+                )
+                .first()
             )
 
-        return query.first()
+        return (
+            self.db.query(Contact)
+            .filter(Contact.id == contact_id)
+            .first()
+        )
 
     def update_contact(
         self,

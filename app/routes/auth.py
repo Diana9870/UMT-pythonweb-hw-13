@@ -1,6 +1,5 @@
 from fastapi import (
     APIRouter,
-    BackgroundTasks,
     Depends,
     HTTPException,
     Request,
@@ -40,29 +39,22 @@ router = APIRouter(
     tags=["Authentication"],
 )
 
-@router.post("/register")
 
+@router.post("/register")
 def register(
     body: UserCreate,
     db: Session = Depends(get_db),
 ):
     """
     Register a new user.
-
-    Creates a new account if the email
-    does not already exist.
-
-    :param body: User registration data.
-    :param db: Database session.
-    :return: Success message.
     """
 
-    existing_user = get_user_by_email(
+    user = get_user_by_email(
         body.email,
         db,
     )
 
-    if existing_user:
+    if user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already exists",
@@ -95,13 +87,7 @@ def login(
     db: Session = Depends(get_db),
 ):
     """
-    Authenticate user.
-
-    Generates access token and refresh token.
-
-    :param body: Login credentials.
-    :param db: Database session.
-    :return: JWT tokens.
+    User login.
     """
 
     user = get_user_by_email(
@@ -151,12 +137,6 @@ def refresh(
 ):
     """
     Refresh JWT tokens.
-
-    Generates a new access token and
-    refresh token using a valid refresh token.
-
-    :param refresh_token: Refresh token.
-    :return: New token pair.
     """
 
     try:
@@ -166,21 +146,21 @@ def refresh(
 
         if payload.get("type") != "refresh":
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=401,
                 detail="Invalid token type",
             )
 
         email = payload.get("sub")
 
-        if email is None:
+        if not email:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=401,
                 detail="Invalid token",
             )
 
     except Exception:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=401,
             detail="Invalid refresh token",
         )
 
@@ -196,17 +176,9 @@ def refresh(
 
 
 @router.post("/logout")
-async def logout(
-    token: str,
-):
+async def logout(token: str):
     """
     Logout user.
-
-    Adds current JWT token
-    to Redis blacklist.
-
-    :param token: JWT token.
-    :return: Success message.
     """
 
     await blacklist_token(token)
@@ -216,26 +188,14 @@ async def logout(
     }
 
 
-@router.post(
-    "/request-password-reset"
-)
+@router.post("/request-password-reset")
 async def request_password_reset(
     body: RequestPasswordReset,
-    background_tasks: BackgroundTasks,
     request: Request,
     db: Session = Depends(get_db),
 ):
     """
-    Request password reset.
-
-    Generates password reset token and
-    sends it to user's email.
-
-    :param body: Email request.
-    :param background_tasks: FastAPI background tasks.
-    :param request: Current request.
-    :param db: Database session.
-    :return: Generic success message.
+    Send password reset email.
     """
 
     user = get_user_by_email(
@@ -244,7 +204,6 @@ async def request_password_reset(
     )
 
     if user:
-
         token = create_reset_token(
             body.email
         )
@@ -254,12 +213,11 @@ async def request_password_reset(
             f"reset-password?token={token}"
         )
 
-        background_tasks.add_task(
-            send_email,
+        await send_email(
             body.email,
             "Password Reset",
             (
-                f"Click the link below "
+                "Click the link below "
                 f"to reset your password:\n\n"
                 f"{reset_link}"
             ),
@@ -279,13 +237,7 @@ async def reset_password(
     db: Session = Depends(get_db),
 ):
     """
-    Reset user password.
-
-    Validates reset token and updates password.
-
-    :param body: Password reset data.
-    :param db: Database session.
-    :return: Success message.
+    Reset password.
     """
 
     email = verify_reset_token(
@@ -296,17 +248,6 @@ async def reset_password(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired token",
-        )
-
-    user = get_user_by_email(
-        email,
-        db,
-    )
-
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
         )
 
     if len(body.new_password) < 6:

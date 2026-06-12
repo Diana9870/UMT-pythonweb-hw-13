@@ -18,7 +18,7 @@ def read_contacts(
     user=Depends(get_current_user),
 ):
     repo = ContactsRepository(db)
-    return repo.get_contact(skip, limit, user)
+    return repo.get_contacts(skip, limit, user)
 
 
 @router.get("/search", response_model=List[ContactResponse])
