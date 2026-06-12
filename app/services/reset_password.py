@@ -1,38 +1,44 @@
 from datetime import datetime, timedelta, timezone
 
-from email_validator import EmailNotValidError, validate_email
-from jose import ExpiredSignatureError, JWTError, jwt
+from email_validator import (
+    EmailNotValidError,
+    validate_email,
+)
+from jose import JWTError, jwt
 
 from app.config import settings
 
-ISSUER = "auth-service"
-AUDIENCE = "reset"
-EXPIRE_MINUTES = 15
+
+RESET_TOKEN_EXPIRE_MINUTES = 15
 
 
-def create_reset_token(email: str) -> str | None:
+def create_reset_token(
+    email: str,
+) -> str | None:
     """
     Create password reset token.
 
-    Args:
-        email: User email.
-
-    Returns:
-        JWT token or None if email is invalid.
+    :param email: User email.
+    :return: JWT token or None.
     """
 
     try:
-        validate_email(email)
+        validate_email(
+            email,
+            check_deliverability=False,
+        )
+
     except EmailNotValidError:
         return None
 
     payload = {
         "sub": email,
-        "iat": datetime.now(timezone.utc),
-        "exp": datetime.now(timezone.utc)
-        + timedelta(minutes=EXPIRE_MINUTES),
-        "iss": ISSUER,
-        "aud": AUDIENCE,
+        "exp": (
+            datetime.now(timezone.utc)
+            + timedelta(
+                minutes=RESET_TOKEN_EXPIRE_MINUTES
+            )
+        ),
         "type": "reset",
     }
 
@@ -43,35 +49,35 @@ def create_reset_token(email: str) -> str | None:
     )
 
 
-def verify_reset_token(token: str) -> str:
+def verify_reset_token(
+    token: str | None,
+) -> str | None:
     """
     Verify password reset token.
 
-    Args:
-        token: JWT token.
-
-    Returns:
-        User email.
-
-    Raises:
-        JWTError
-        ExpiredSignatureError
+    :param token: JWT token.
+    :return: User email or None.
     """
 
-    payload = jwt.decode(
-        token,
-        settings.secret_key,
-        algorithms=[settings.algorithm],
-        issuer=ISSUER,
-        audience=AUDIENCE,
-    )
+    if not token:
+        return None
 
-    if payload.get("type") != "reset":
-        raise JWTError("Invalid token type")
+    try:
+        payload = jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=[settings.algorithm],
+        )
 
-    email = payload.get("sub")
+        if payload.get("type") != "reset":
+            return None
 
-    if not email:
-        raise JWTError("Email not found")
+        email = payload.get("sub")
 
-    return email
+        if not email:
+            return None
+
+        return email
+
+    except JWTError:
+        return None

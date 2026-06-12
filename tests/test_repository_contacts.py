@@ -68,18 +68,18 @@ def test_get_contacts(repo, mock_db, user):
 
 
 
-def test_get_contact_by_id_found(repo, mock_db, user, contact):
+def test_get_contact_found(repo, mock_db, user, contact):
     mock_db.query().filter().first.return_value = contact
 
-    result = repo.get_contact_by_id(contact.id, user)
+    result = repo.get_contact(contact.id, user)
 
     assert result == contact
 
 
-def test_get_contact_by_id_not_found(repo, mock_db, user):
+def test_get_contact_not_found(repo, mock_db, user):
     mock_db.query().filter().first.return_value = None
 
-    result = repo.get_contact_by_id(999, user)
+    result = repo.get_contact(999, user)
 
     assert result is None
 

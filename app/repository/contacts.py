@@ -74,7 +74,7 @@ class ContactsRepository:
             .all()
         )
 
-    def get_contact_by_id(
+    def get_contact(
         self,
         contact_id: int,
         user=None,
@@ -98,23 +98,6 @@ class ContactsRepository:
 
         return query.first()
 
-    def get_contact(
-        self,
-        contact_id: int,
-        user=None,
-    ):
-        """
-        Alias for get_contact_by_id.
-
-        :param contact_id: Contact ID.
-        :param user: Current user.
-        :return: Contact or None.
-        """
-        return self.get_contact_by_id(
-            contact_id,
-            user,
-        )
-
     def update_contact(
         self,
         contact_id: int,
@@ -130,7 +113,7 @@ class ContactsRepository:
         :return: Updated contact or None.
         """
 
-        contact = self.get_contact_by_id(
+        contact = self.get_contact(
             contact_id,
             user,
         )
@@ -162,7 +145,7 @@ class ContactsRepository:
         :return: Deleted contact or None.
         """
 
-        contact = self.get_contact_by_id(
+        contact = self.get_contact(
             contact_id,
             user,
         )

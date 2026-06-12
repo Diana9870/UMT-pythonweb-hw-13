@@ -18,7 +18,7 @@ from app.services.redis_cache import cache
 
 pwd_context = CryptContext(
     schemes=["bcrypt"],
-    deprecated="auto"
+    deprecated="auto",
 )
 
 oauth2_scheme = OAuth2PasswordBearer(
@@ -28,27 +28,20 @@ oauth2_scheme = OAuth2PasswordBearer(
 
 def verify_password(
     plain_password: str,
-    hashed_password: str
+    hashed_password: str,
 ) -> bool:
     """
-    Verify password against hash.
-
-    :param plain_password: User password.
-    :param hashed_password: Stored password hash.
-    :return: True if password is valid.
+    Verify password against stored hash.
     """
     return pwd_context.verify(
         plain_password,
-        hashed_password
+        hashed_password,
     )
 
 
 def hash_password(password: str) -> str:
     """
     Generate password hash.
-
-    :param password: Plain text password.
-    :return: Hashed password.
     """
     return pwd_context.hash(password)
 
@@ -56,9 +49,6 @@ def hash_password(password: str) -> str:
 def create_access_token(data: dict) -> str:
     """
     Create JWT access token.
-
-    :param data: Payload data.
-    :return: JWT token.
     """
     to_encode = data.copy()
 
@@ -86,9 +76,6 @@ def create_access_token(data: dict) -> str:
 def create_refresh_token(data: dict) -> str:
     """
     Create JWT refresh token.
-
-    :param data: Payload data.
-    :return: Refresh JWT token.
     """
     to_encode = data.copy()
 
@@ -114,9 +101,6 @@ def create_refresh_token(data: dict) -> str:
 def decode_token(token: str) -> Dict:
     """
     Decode JWT token.
-
-    :param token: JWT token.
-    :return: Decoded payload.
     """
     return jwt.decode(
         token,
@@ -130,14 +114,10 @@ async def get_current_user(
     db: Session = Depends(get_db),
 ):
     """
-    Return currently authenticated user.
+    Get authenticated user.
 
-    User data is cached in Redis
-    to reduce database queries.
-
-    :param token: JWT access token.
-    :param db: Database session.
-    :return: User object.
+    First tries Redis cache.
+    If cache miss -> database.
     """
 
     credentials_exception = HTTPException(
@@ -165,12 +145,12 @@ async def get_current_user(
     )
 
     if cached_user:
-        user = get_user_by_email(email, db)
+        return cached_user
 
-        if user:
-            return user
-
-    user = get_user_by_email(email, db)
+    user = get_user_by_email(
+        email,
+        db,
+    )
 
     if user is None:
         raise HTTPException(
@@ -195,10 +175,7 @@ def get_current_admin(
     current_user=Depends(get_current_user),
 ):
     """
-    Allow access only to administrators.
-
-    :param current_user: Current user.
-    :return: User object.
+    Allow access only to admin users.
     """
 
     role = (
@@ -223,14 +200,6 @@ async def update_password(
 ) -> bool:
     """
     Update user password.
-
-    Password is hashed before saving.
-    Redis cache is cleared afterwards.
-
-    :param email: User email.
-    :param new_password: New password.
-    :param db: Database session.
-    :return: True if password updated.
     """
 
     hashed_password = hash_password(
@@ -252,12 +221,10 @@ async def update_password(
 
 
 async def blacklist_token(
-    token: str
+    token: str,
 ) -> None:
     """
-    Add JWT token to blacklist.
-
-    :param token: JWT token.
+    Add token to Redis blacklist.
     """
 
     await cache.set(
@@ -268,13 +235,10 @@ async def blacklist_token(
 
 
 async def is_token_blacklisted(
-    token: str
+    token: str,
 ) -> bool:
     """
-    Check if token is blacklisted.
-
-    :param token: JWT token.
-    :return: True if token is blacklisted.
+    Check whether token is blacklisted.
     """
 
     result = await cache.get(

@@ -18,7 +18,7 @@ def read_contacts(
     user=Depends(get_current_user),
 ):
     repo = ContactsRepository(db)
-    return repo.get_contact_by_id(skip, limit, user)
+    return repo.get_contact(skip, limit, user)
 
 
 @router.get("/search", response_model=List[ContactResponse])
@@ -41,13 +41,13 @@ def birthdays(
 
 
 @router.get("/{contact_id}", response_model=ContactResponse)
-def get_contact_by_id(
+def get_contact(
     contact_id: int,
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
     repo = ContactsRepository(db)
-    contact = repo.get_contact_by_id(contact_id, user)
+    contact = repo.get_contact(contact_id, user)
 
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -73,7 +73,7 @@ def update_contact_route(
     user=Depends(get_current_user),
 ):
     repo = ContactsRepository(db)
-    contact = repo.get_contact_by_id(contact_id, user)
+    contact = repo.get_contact(contact_id, user)
 
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -88,7 +88,7 @@ def delete_contact_route(
     user=Depends(get_current_user),
 ):
     repo = ContactsRepository(db)
-    contact = repo.get_contact_by_id(contact_id, user)
+    contact = repo.get_contact(contact_id, user)
 
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
