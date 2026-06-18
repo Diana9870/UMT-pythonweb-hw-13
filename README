@@ -1,0 +1,24 @@
+Команда: python -m pytest --cov=app
+
+============================================================ tests coverage =============================================================
+____________________________________________ coverage: platform win32, python 3.14.5-final-0 ____________________________________________
+
+Name                             Stmts   Miss  Cover   Missing
+--------------------------------------------------------------
+app\config.py                       24      0   100%
+app\database.py                     14      4    71%   12-16
+app\main.py                         78     38    51%   36-58, 92-94, 139-141, 157, 172, 185-196, 210-220
+app\models.py                       23      0   100%
+app\repository\contacts.py          62      2    97%   92, 234
+app\repository\users.py             44      2    95%   89, 115
+app\routes\auth.py                  57     18    68%   58, 105, 142-167, 184-186, 207-216, 254
+app\routes\contacts.py              46     20    57%   30-31, 39-40, 49-55, 75-81, 90-98
+app\routes\users.py                 16      3    81%   16-17, 24
+app\schemas.py                      21      0   100%
+app\services\auth.py                64     18    72%   133, 138-141, 148, 156, 181-193, 205-220, 230, 244-248
+app\services\email.py                7      3    57%   16-25
+app\services\redis_cache.py         58     23    60%   68-72, 75-84, 87-94, 97-105, 108-112
+app\services\reset_password.py      25      2    92%   73, 78
+app\services\roles.py                4      0   100%
+--------------------------------------------------------------
+TOTAL                              543    133    76%
